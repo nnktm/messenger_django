@@ -1,0 +1,2 @@
+# messenger_django
+djangoを利用したメッセージの送受信アプリ
