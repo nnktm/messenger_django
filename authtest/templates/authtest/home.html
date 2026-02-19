@@ -9,10 +9,14 @@
     <h1>Home</h1>
     {% if user.is_authenticated %}
         <p>Welcome, {{ user.username }}!</p>
-        <a href="{% url 'logout' %}">Logout</a>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button type="submit">Logout</button>
+        </form>
     {% else %}
         <p>Welcome, guest!</p>
         <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'signup' %}">Signup</a>
     {% endif %}
 </body>
 </html>
