@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'daphne',
+    'channels',
     'messenger',
     'authtest',
     'accounts',
@@ -122,6 +123,10 @@ STATIC_URL = 'static/'
 
 
 ASGI_APPLICATION = 'config.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'},
+}
 
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'

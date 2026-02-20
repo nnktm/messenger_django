@@ -7,17 +7,33 @@
 <body>
     <div id="header">
         <h1>Messenger</h1>
-        <a href="/messenger/create/">Create Room</a>
-        <a href="/messenger/join/">Join Room</a>
+        <p><a href="{% url 'home' %}">← ホーム</a></p>
     </div>
     <div id="sidebar">
-        <h2>Rooms</h2>
-        {% for room in rooms %}
-            <a href="/messenger/{{ room.name }}/">{{ room.name }}</a>
+        <h2>ルーム一覧</h2>
+        {% for room in private_message_rooms %}
+            <p><a href="{% if user == room.member_1 %}{% url 'private_room' room.member_2.username %}{% else %}{% url 'private_room' room.member_1.username %}{% endif %}"> {% if user == room.member_1 %}{{ room.member_2.username }}{% else %}{{ room.member_1.username }}{% endif %}</a></p>
+        {% empty %}
+            <p>ルームはまだありません。</p>
         {% endfor %}
-    </div>
-    <div id="content">
-        
+        <h2>新規チャット（相手を選んで入室）</h2>
+        <form id="enter-room-form">
+            <p>チャット相手を選んでください。</p>
+            <select name="room_slug" required id="room-slug-select">
+                <option value="">-- ユーザーを選択 --</option>
+                {% for u in other_users %}
+                    <option value="{{ u.username }}">{{ u.username }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit">入室</button>
+        </form>
+        <script>
+            document.getElementById('enter-room-form').onsubmit = function(e) {
+                e.preventDefault();
+                var slug = document.getElementById('room-slug-select').value;
+                if (slug) location.href = "{% url 'private_room' '___' %}".replace('___', encodeURIComponent(slug));
+            };
+        </script>
     </div>
 </body>
 </html>

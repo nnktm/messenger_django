@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>{% if user == private_room.member_1 %}{{ private_room.member_2.username }}{% else %}{{ private_room.member_1.username }}{% endif %} とのチャット</title>
+</head>
+<body>
+    <p><a href="{% url 'index' %}">← ルーム一覧</a></p>
+    <h1>{% if user == private_room.member_1 %}{{ private_room.member_2.username }}{% else %}{{ private_room.member_1.username }}{% endif %} とのチャット</h1>
+    <textarea id="chat-log" cols="100" rows="20" readonly>
+        {% for private_message in private_messages %}
+            {{ private_message.sender.username }}: {{ private_message.content }}
+        {% endfor %}
+    </textarea><br>
+    <input id="chat-message-input" type="text" size="100" placeholder="メッセージを入力"><br>
+    <input id="chat-message-submit" type="button" value="送信">
+    {{ private_room.id|json_script:"room-id" }}
+    <script>
+        const roomId = JSON.parse(document.getElementById('room-id').textContent);
+        const chatLog = document.querySelector('#chat-log');
+
+        const chatSocket = new WebSocket(
+            'ws://' + window.location.host + '/ws/chat/private/' + roomId + '/'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            const line = (data.username || '') + ': ' + data.message + '\n';
+            chatLog.value += line;
+            chatLog.scrollTop = chatLog.scrollHeight;
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        document.querySelector('#chat-message-input').focus();
+        document.querySelector('#chat-message-input').onkeyup = function(e) {
+            if (e.keyCode === 13) document.querySelector('#chat-message-submit').click();
+        };
+
+        document.querySelector('#chat-message-submit').onclick = function() {
+            const input = document.querySelector('#chat-message-input');
+            const message = input.value.trim();
+            if (message) {
+                chatSocket.send(JSON.stringify({ message: message }));
+                input.value = '';
+            }
+        };
+    </script>
+</body>
+</html>
