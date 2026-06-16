@@ -4,37 +4,83 @@
   <head>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="{% static 'messenger/private_room.css' %}" />
-    <title>
-      {% if user == private_room.member_1 %}{{ private_room.member_2.username
-      }}{% else %}{{ private_room.member_1.username }}{% endif %} とのチャット
-    </title>
+    <title>{{ other_user.username }} とのチャット</title>
   </head>
   <body>
-    <p><a href="{% url 'index' %}">← ルーム一覧</a></p>
-    {% if user == private_room.member_1 %}
-    <h1>{{ private_room.member_2.username }}</h1>
-    {% else %}
-    <h1>{{ private_room.member_1.username }}</h1>
-    {% endif %}
-    <textarea id="chat-log" cols="100" rows="20" readonly>
-        {% for private_message in private_messages %}
-            {{ private_message.sender.username }}: {{ private_message.content }}
-        {% endfor %}
-    </textarea
-    ><br />
-    <div class="chat-input-wrap">
-      <input
-        id="chat-message-input"
-        type="text"
-        size="100"
-        placeholder="メッセージを入力"
-      />
-      <input id="chat-message-submit" type="button" value="送信" />
+    <div class="chat-page">
+      <header class="chat-top">
+        <p class="chat-back"><a href="{% url 'index' %}">← ルーム一覧</a></p>
+        <div class="chat-header">
+          <img
+            src="{{ other_user_avatar_url }}"
+            alt="{{ other_user.username }} のアイコン"
+            class="chat-avatar chat-avatar-lg"
+          />
+          <h1>{{ other_user.username }}</h1>
+        </div>
+      </header>
+      <main id="chat-log" class="chat-log"></main>
+      <footer class="chat-bottom">
+        <div class="chat-input-wrap">
+          <input
+            id="chat-message-input"
+            type="text"
+            placeholder="メッセージを入力"
+          />
+          <input id="chat-message-submit" type="button" value="送信" />
+        </div>
+      </footer>
     </div>
     {{ private_room.id|json_script:"room-id" }}
+    {{ initial_messages|json_script:"initial-messages" }}
     <script>
       const roomId = JSON.parse(document.getElementById("room-id").textContent);
+      const initialMessages = JSON.parse(
+        document.getElementById("initial-messages").textContent,
+      );
       const chatLog = document.querySelector("#chat-log");
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text ?? "";
+        return div.innerHTML;
+      }
+
+      function formatTime(isoString) {
+        if (!isoString) return "";
+        const date = new Date(isoString);
+        return date.toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function appendMessage({ username, message, avatar_url, created_at }) {
+        const row = document.createElement("div");
+        row.className = "chat-message";
+        row.innerHTML =
+          '<img src="' +
+          escapeHtml(avatar_url) +
+          '" alt="" class="chat-avatar" width="25" height="25" />' +
+          '<div class="chat-message-body">' +
+          '<div class="chat-message-header">' +
+          '<span class="chat-username">' +
+          escapeHtml(username) +
+          "</span>" +
+          '<span class="chat-timestamp">' +
+          escapeHtml(formatTime(created_at)) +
+          "</span>" +
+          "</div>" +
+          '<div class="chat-text">' +
+          escapeHtml(message) +
+          "</div>" +
+          "</div>";
+        chatLog.appendChild(row);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      initialMessages.forEach(appendMessage);
+      chatLog.scrollTop = chatLog.scrollHeight;
 
       const chatSocket = new WebSocket(
         "ws://" + window.location.host + "/ws/chat/private/" + roomId + "/",
@@ -42,9 +88,7 @@
 
       chatSocket.onmessage = function (e) {
         const data = JSON.parse(e.data);
-        const line = (data.username || "") + ": " + data.message + "\n";
-        chatLog.value += line;
-        chatLog.scrollTop = chatLog.scrollHeight;
+        appendMessage(data);
       };
 
       chatSocket.onclose = function (e) {

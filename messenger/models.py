@@ -1,6 +1,30 @@
-from enum import member
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
+
+
+def avatar_upload_path(instance, filename):
+    return f'avatars/{instance.user.pk}/{filename}'
+
+
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    avatar = models.ImageField(upload_to=avatar_upload_path, blank=True, null=True)
+
+    def __str__(self):
+        return f'Profile({self.user.username})'
+
+    @property
+    def avatar_url(self):
+        if self.avatar:
+            return self.avatar.url
+        return settings.DEFAULT_AVATAR_URL
+
+
+def get_avatar_url_for_user(user):
+    profile, _ = Profile.objects.get_or_create(user=user)
+    return profile.avatar_url
+
 
 class private_room(models.Model):
     member_1 = models.ForeignKey(User, on_delete=models.CASCADE, related_name='private_rooms_as_m1')

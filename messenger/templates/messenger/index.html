@@ -7,12 +7,16 @@
 <body>
     <div id="header">
         <h1>Messenger</h1>
-        <p><a href="{% url 'home' %}">← ホーム</a></p>
+        <p>
+            <a href="{% url 'home' %}">← ホーム</a>
+            |
+            <a href="{% url 'profile' %}">マイプロフィール</a>
+        </p>
     </div>
     <div id="sidebar">
         <h2>ルーム一覧</h2>
         {% for room in private_message_rooms %}
-            <p><a href="{% if user == room.member_1 %}{% url 'private_room' room.member_2.username %}{% else %}{% url 'private_room' room.member_1.username %}{% endif %}"> {% if user == room.member_1 %}{{ room.member_2.username }}{% else %}{{ room.member_1.username }}{% endif %}</a></p>
+            <p><a href="{% if user == room.member_1 %}{% url 'private_room' room.member_2.username %}{% else %}{% url 'private_room' room.member_1.username %}{% endif %}"> {% if user == room.member_1 %}{{ room.member_2.username }}{% else %}{{ room.member_1.username }}{% endif %}</a> (<a href="{% if user == room.member_1 %}{% url 'profile_user' room.member_2.username %}{% else %}{% url 'profile_user' room.member_1.username %}{% endif %}">プロフィール</a>)</p>
         {% empty %}
             <p>ルームはまだありません。</p>
         {% endfor %}

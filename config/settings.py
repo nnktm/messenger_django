@@ -121,6 +121,10 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+DEFAULT_AVATAR_URL = f'/{MEDIA_URL}image.png'
+
 
 ASGI_APPLICATION = 'config.asgi.application'
 

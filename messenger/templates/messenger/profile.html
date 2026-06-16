@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>
+      {% if is_own_profile %}マイプロフィール{% else %}{{ profile_user.username
+      }} のプロフィール{% endif %}
+    </title>
+  </head>
+  <body>
+    <p><a href="{% url 'index' %}">← ルーム一覧</a></p>
+
+    {% if messages %}
+    <ul>
+      {% for message in messages %}
+      <li>{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %} {% if is_own_profile %}
+    <h1>マイプロフィール</h1>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div>
+        <img
+          src="{{ profile.avatar_url }}"
+          alt="アイコン"
+          width="120"
+          height="120"
+        />
+      </div>
+      {% if form.non_field_errors %}
+      <ul>
+        {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      <p>
+        <label for="{{ form.username.id_for_label }}"
+          >{{ form.username.label }}</label
+        ><br />
+        {{ form.username }} {% for error in form.username.errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+      </p>
+      <p>
+        <label for="{{ form.avatar.id_for_label }}"
+          >{{ form.avatar.label }}</label
+        ><br />
+        {{ form.avatar }} {% for error in form.avatar.errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+      </p>
+      <button type="submit">保存</button>
+      <p>登録日: {{ profile_user.date_joined|date:"Y年n月j日" }}</p>
+    </form>
+    {% else %}
+    <h1>{{ profile_user.username }} のプロフィール</h1>
+    <div>
+      <img
+        src="{{ profile.avatar_url }}"
+        alt="{{ profile_user.username }} のアイコン"
+        width="120"
+        height="120"
+      />
+    </div>
+    <p>ユーザーネーム: {{ profile_user.username }}</p>
+    <p>登録日: {{ profile_user.date_joined|date:"Y年n月j日" }}</p>
+    <p>
+      <a href="{% url 'private_room' profile_user.username %}"
+        >メッセージを送る</a
+      >
+    </p>
+    {% endif %}
+  </body>
+</html>

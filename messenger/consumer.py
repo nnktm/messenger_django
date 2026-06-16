@@ -35,6 +35,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
         if not user or not user.is_authenticated:
             return
         username = user.username
+        avatar_url = await self.get_avatar_url(user)
         msg = await self.save_message(content)
         created = msg.created_at.isoformat() if msg else None
         await self.channel_layer.group_send(
@@ -43,6 +44,7 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
                 'type': 'chat_message',
                 'message': content,
                 'username': username,
+                'avatar_url': avatar_url,
                 'created_at': created,
             },
         )
@@ -51,8 +53,14 @@ class PrivateChatConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             'message': event['message'],
             'username': event['username'],
+            'avatar_url': event.get('avatar_url'),
             'created_at': event.get('created_at'),
         }))
+
+    @database_sync_to_async
+    def get_avatar_url(self, user):
+        from .models import get_avatar_url_for_user
+        return get_avatar_url_for_user(user)
 
     @database_sync_to_async
     def save_message(self, content):
