@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>グループを作成</title>
+  </head>
+  <body>
+    <p><a href="{% url 'index' %}">← ルーム一覧</a></p>
+    <h1>グループを作成</h1>
+
+    {% if form.non_field_errors %}
+    <ul>
+      {% for error in form.non_field_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="create-group-form">
+      {% csrf_token %}
+      <p>
+        <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label
+        ><br />
+        {{ form.name }}
+        {% for error in form.name.errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+      </p>
+      <p>
+        <label for="{{ form.icon.id_for_label }}">{{ form.icon.label }}</label
+        ><br />
+        {{ form.icon }}
+        {% for error in form.icon.errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+      </p>
+      <fieldset>
+        <legend>メンバーを招待（作成者以外に2人以上）</legend>
+        <input
+          type="search"
+          id="member-search-input"
+          placeholder="ユーザー名を入力"
+          autocomplete="off"
+        />
+        <ul id="member-search-results" hidden></ul>
+        <ul id="selected-members"></ul>
+        {{ form.member_usernames }}
+        {% for error in form.member_usernames.errors %}
+        <span>{{ error }}</span>
+        {% endfor %}
+      </fieldset>
+      <button type="submit">グループを作成</button>
+    </form>
+
+    {{ other_usernames|json_script:"other-usernames" }}
+    <script>
+      (function () {
+        var usernames = JSON.parse(
+          document.getElementById("other-usernames").textContent,
+        );
+        var searchInput = document.getElementById("member-search-input");
+        var searchResults = document.getElementById("member-search-results");
+        var selectedList = document.getElementById("selected-members");
+        var hiddenInput = document.getElementById("id_member_usernames");
+        var selected = [];
+
+        function syncHiddenInput() {
+          hiddenInput.value = selected.join(",");
+        }
+
+        function renderSelected() {
+          selectedList.innerHTML = "";
+          selected.forEach(function (username) {
+            var li = document.createElement("li");
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = username + " ×";
+            btn.addEventListener("click", function () {
+              selected = selected.filter(function (u) {
+                return u !== username;
+              });
+              renderSelected();
+              syncHiddenInput();
+            });
+            li.appendChild(btn);
+            selectedList.appendChild(li);
+          });
+          syncHiddenInput();
+        }
+
+        function addMember(username) {
+          if (selected.includes(username)) return;
+          selected.push(username);
+          renderSelected();
+          searchInput.value = "";
+          searchResults.hidden = true;
+          searchResults.innerHTML = "";
+        }
+
+        function filterUsers(query) {
+          var q = query.trim().toLowerCase();
+          if (!q) return [];
+          return usernames.filter(function (u) {
+            return u.toLowerCase().includes(q) && !selected.includes(u);
+          });
+        }
+
+        function renderSearchResults(matches) {
+          searchResults.innerHTML = "";
+          if (!matches.length) {
+            searchResults.hidden = true;
+            return;
+          }
+          matches.forEach(function (username) {
+            var li = document.createElement("li");
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = username;
+            btn.addEventListener("click", function () {
+              addMember(username);
+            });
+            li.appendChild(btn);
+            searchResults.appendChild(li);
+          });
+          searchResults.hidden = false;
+        }
+
+        searchInput.addEventListener("input", function () {
+          renderSearchResults(filterUsers(searchInput.value));
+        });
+
+        searchInput.addEventListener("keydown", function (e) {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          var query = searchInput.value.trim();
+          if (!query) return;
+          var exact = usernames.find(function (u) {
+            return u.toLowerCase() === query.toLowerCase();
+          });
+          if (exact && !selected.includes(exact)) {
+            addMember(exact);
+            return;
+          }
+          var matches = filterUsers(query);
+          if (matches.length === 1) {
+            addMember(matches[0]);
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

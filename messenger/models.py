@@ -47,3 +47,34 @@ class private_message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username} @ {self.room.member_1.username} and {self.room.member_2.username}: {self.content[:30]}"
+
+class private_group_room(models.Model):
+    name = models.CharField(max_length=255)
+    icon = models.ImageField(upload_to='group_icons/', blank=True, null=True)
+    icon_url = models.URLField(blank=True, null=True)
+    members = models.ManyToManyField(User, related_name='group_rooms')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Group Room({self.name})"
+
+    @property
+    def icon_display_url(self):
+        if self.icon:
+            return self.icon.url
+        if self.icon_url:
+            return self.icon_url
+        return settings.DEFAULT_AVATAR_URL
+
+
+def get_group_icon_url_for_room(room):
+    return room.icon_display_url
+
+class private_group_message(models.Model):
+    room = models.ForeignKey(private_group_room, on_delete=models.CASCADE, related_name='messages')
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_group_messages')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.sender.username} @ {self.room.name}: {self.content[:30]}"

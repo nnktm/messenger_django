@@ -14,7 +14,16 @@
       </p>
     </div>
     <div id="sidebar">
-      <h2>ルーム一覧</h2>
+      <h2>グループ一覧</h2>
+      {% for room in group_rooms %}
+      <p>
+        <a href="{% url 'private_group_room' room.pk %}">{{ room.name }}</a>
+      </p>
+      {% empty %}
+      <p>グループはまだありません。</p>
+      {% endfor %}
+      <p><a href="{% url 'create_group' %}">＋ グループを作成</a></p>
+      <h2>1対1チャット</h2>
       {% for room in private_message_rooms %}
       <p>
         <a
@@ -31,27 +40,86 @@
       {% empty %}
       <p>ルームはまだありません。</p>
       {% endfor %}
-      <h2>新規チャット（相手を選んで入室）</h2>
+      <h2>新規チャット（相手を検索して入室）</h2>
       <form id="enter-room-form">
-        <p>チャット相手を選んでください。</p>
-        <select name="room_slug" required id="room-slug-select">
-          <option value="">-- ユーザーを選択 --</option>
-          {% for u in other_users %}
-          <option value="{{ u.username }}">{{ u.username }}</option>
-          {% endfor %}
-        </select>
+        <p>ユーザー名を入力して検索してください。</p>
+        <input
+          type="search"
+          id="user-search-input"
+          placeholder="ユーザー名を入力"
+          autocomplete="off"
+          required
+        />
+        <ul id="user-search-results" hidden></ul>
         <button type="submit">入室</button>
       </form>
+      {{ other_usernames|json_script:"other-usernames" }}
       <script>
-        document.getElementById("enter-room-form").onsubmit = function (e) {
-          e.preventDefault();
-          var slug = document.getElementById("room-slug-select").value;
-          if (slug)
-            location.href = "{% url 'private_room' '___' %}".replace(
+        (function () {
+          var usernames = JSON.parse(
+            document.getElementById("other-usernames").textContent,
+          );
+          var input = document.getElementById("user-search-input");
+          var results = document.getElementById("user-search-results");
+          var form = document.getElementById("enter-room-form");
+          var roomUrl = "{% url 'private_room' '___' %}";
+
+          function goToRoom(username) {
+            location.href = roomUrl.replace(
               "___",
-              encodeURIComponent(slug),
+              encodeURIComponent(username),
             );
-        };
+          }
+
+          function filterUsers(query) {
+            var q = query.trim().toLowerCase();
+            if (!q) return [];
+            return usernames.filter(function (u) {
+              return u.toLowerCase().includes(q);
+            });
+          }
+
+          function renderResults(matches) {
+            results.innerHTML = "";
+            if (!matches.length) {
+              results.hidden = true;
+              return;
+            }
+            matches.forEach(function (username) {
+              var li = document.createElement("li");
+              var btn = document.createElement("button");
+              btn.type = "button";
+              btn.textContent = username;
+              btn.addEventListener("click", function () {
+                goToRoom(username);
+              });
+              li.appendChild(btn);
+              results.appendChild(li);
+            });
+            results.hidden = false;
+          }
+
+          input.addEventListener("input", function () {
+            renderResults(filterUsers(input.value));
+          });
+
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var query = input.value.trim();
+            if (!query) return;
+            var exact = usernames.find(function (u) {
+              return u.toLowerCase() === query.toLowerCase();
+            });
+            if (exact) {
+              goToRoom(exact);
+              return;
+            }
+            var matches = filterUsers(query);
+            if (matches.length === 1) {
+              goToRoom(matches[0]);
+            }
+          });
+        })();
       </script>
     </div>
   </body>

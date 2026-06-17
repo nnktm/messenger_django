@@ -1,0 +1,127 @@
+<!doctype html>
+{% load static %}
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link
+      rel="stylesheet"
+      href="{% static 'messenger/private_group_room.css' %}"
+    />
+    <title>{{ group_room.name }}</title>
+  </head>
+  <body>
+    <div class="chat-page">
+      <header class="chat-top">
+        <p class="chat-back"><a href="{% url 'index' %}">← ルーム一覧</a></p>
+        <div class="chat-header">
+          <img
+            src="{{ group_icon_url }}"
+            alt="{{ group_room.name }} のアイコン"
+            class="chat-avatar chat-avatar-lg"
+          />
+          <div class="chat-header-text">
+            <h1>{{ group_room.name }}</h1>
+            <p class="chat-members">
+              <span class="chat-members-label">メンバー:</span>
+              {% for member in members %}
+              <span class="chat-member">{{ member.username }}</span>{% if not forloop.last %}<span class="chat-member-sep">, </span>{% endif %}
+              {% empty %}
+              <span class="chat-member-empty">まだメンバーがいません。</span>
+              {% endfor %}
+            </p>
+          </div>
+        </div>
+      </header>
+      <main id="chat-log" class="chat-log"></main>
+      <footer class="chat-bottom">
+        <div class="chat-input-wrap">
+          <input
+            id="chat-message-input"
+            type="text"
+            placeholder="メッセージを入力"
+          />
+          <input id="chat-message-submit" type="button" value="送信" />
+        </div>
+      </footer>
+    </div>
+    {{ group_room.id|json_script:"room-id" }}
+    {{ initial_messages|json_script:"initial-messages" }}
+    <script>
+      const roomId = JSON.parse(document.getElementById("room-id").textContent);
+      const initialMessages = JSON.parse(
+        document.getElementById("initial-messages").textContent,
+      );
+      const chatLog = document.querySelector("#chat-log");
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text ?? "";
+        return div.innerHTML;
+      }
+
+      function formatTime(isoString) {
+        if (!isoString) return "";
+        const date = new Date(isoString);
+        return date.toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function appendMessage({ username, message, avatar_url, created_at }) {
+        const row = document.createElement("div");
+        row.className = "chat-message";
+        row.innerHTML =
+          '<img src="' +
+          escapeHtml(avatar_url) +
+          '" alt="" class="chat-avatar" width="25" height="25" />' +
+          '<div class="chat-message-body">' +
+          '<div class="chat-message-header">' +
+          '<span class="chat-username">' +
+          escapeHtml(username) +
+          "</span>" +
+          '<span class="chat-timestamp">' +
+          escapeHtml(formatTime(created_at)) +
+          "</span>" +
+          "</div>" +
+          '<div class="chat-text">' +
+          escapeHtml(message) +
+          "</div>" +
+          "</div>";
+        chatLog.appendChild(row);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      initialMessages.forEach(appendMessage);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      const chatSocket = new WebSocket(
+        "ws://" + window.location.host + "/ws/chat/group/" + roomId + "/",
+      );
+
+      chatSocket.onmessage = function (e) {
+        const data = JSON.parse(e.data);
+        appendMessage(data);
+      };
+
+      chatSocket.onclose = function (e) {
+        console.error("Chat socket closed unexpectedly");
+      };
+
+      document.querySelector("#chat-message-input").focus();
+      document.querySelector("#chat-message-input").onkeyup = function (e) {
+        if (e.keyCode === 13)
+          document.querySelector("#chat-message-submit").click();
+      };
+
+      document.querySelector("#chat-message-submit").onclick = function () {
+        const input = document.querySelector("#chat-message-input");
+        const message = input.value.trim();
+        if (message) {
+          chatSocket.send(JSON.stringify({ message: message }));
+          input.value = "";
+        }
+      };
+    </script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 
-from .models import Profile
+from .models import Profile, private_group_room
 
 
 class ProfileEditForm(forms.ModelForm):
@@ -35,3 +35,54 @@ class ProfileEditForm(forms.ModelForm):
         if commit:
             profile.save()
         return profile
+
+
+class GroupCreateForm(forms.Form):
+    name = forms.CharField(label='グループ名', max_length=255)
+    icon = forms.ImageField(label='グループアイコン', required=False)
+    member_usernames = forms.CharField(widget=forms.HiddenInput)
+
+    def __init__(self, *args, **kwargs):
+        self.creator = kwargs.pop('creator')
+        super().__init__(*args, **kwargs)
+
+    def clean_member_usernames(self):
+        raw = self.cleaned_data['member_usernames'].strip()
+        if not raw:
+            usernames = []
+        else:
+            usernames = [u.strip() for u in raw.split(',') if u.strip()]
+
+        seen = set()
+        unique_usernames = []
+        for username in usernames:
+            key = username.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_usernames.append(username)
+
+        if len(unique_usernames) < 2:
+            raise forms.ValidationError('メンバーは作成者以外に2人以上招待してください。')
+
+        users = list(User.objects.filter(username__in=unique_usernames))
+        found = {u.username.lower(): u for u in users}
+        missing = [u for u in unique_usernames if u.lower() not in found]
+        if missing:
+            raise forms.ValidationError(
+                f'存在しないユーザー: {", ".join(missing)}'
+            )
+
+        if self.creator.username.lower() in found:
+            raise forms.ValidationError('作成者自身は招待リストに含めないでください。')
+
+        self.invited_users = [found[u.lower()] for u in unique_usernames]
+        return raw
+
+    def save(self):
+        room = private_group_room.objects.create(
+            name=self.cleaned_data['name'],
+            icon=self.cleaned_data.get('icon'),
+        )
+        room.members.add(self.creator, *self.invited_users)
+        return room

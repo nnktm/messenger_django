@@ -3,18 +3,74 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import private_room as PrivateRoom, Profile, get_avatar_url_for_user
-from .forms import ProfileEditForm
+from .models import (
+    private_room as PrivateRoom,
+    private_group_room as PrivateGroupRoom,
+    Profile,
+    get_avatar_url_for_user,
+    get_group_icon_url_for_room,
+)
+from .forms import ProfileEditForm, GroupCreateForm
 
 @login_required
 def index(request):
     private_rooms = PrivateRoom.objects.filter(
         Q(member_1=request.user) | Q(member_2=request.user)
     ).order_by('-created_at')
-    other_users = User.objects.exclude(pk=request.user.pk).order_by('username')
+    group_rooms = request.user.group_rooms.order_by('-created_at')
+    other_usernames = list(
+        User.objects.exclude(pk=request.user.pk)
+        .order_by('username')
+        .values_list('username', flat=True)
+    )
     return render(request, 'messenger/index.html', {
         'private_message_rooms': private_rooms,
-        'other_users': other_users,
+        'group_rooms': group_rooms,
+        'other_usernames': other_usernames,
+    })
+
+@login_required
+def create_group(request):
+    other_usernames = list(
+        User.objects.exclude(pk=request.user.pk)
+        .order_by('username')
+        .values_list('username', flat=True)
+    )
+    if request.method == 'POST':
+        form = GroupCreateForm(request.POST, request.FILES, creator=request.user)
+        if form.is_valid():
+            room = form.save()
+            messages.success(request, f'グループ「{room.name}」を作成しました。')
+            return redirect('private_group_room', room_id=room.pk)
+    else:
+        form = GroupCreateForm(creator=request.user)
+
+    return render(request, 'messenger/create_group.html', {
+        'form': form,
+        'other_usernames': other_usernames,
+    })
+
+@login_required
+def private_group_room(request, room_id):
+    group_room = get_object_or_404(
+        PrivateGroupRoom.objects.prefetch_related('members'),
+        pk=room_id,
+        members=request.user,
+    )
+    group_messages = group_room.messages.select_related('sender').order_by('created_at')[:200]
+    return render(request, 'messenger/private_group_room.html', {
+        'group_room': group_room,
+        'group_icon_url': get_group_icon_url_for_room(group_room),
+        'members': group_room.members.order_by('username'),
+        'initial_messages': [
+            {
+                'username': m.sender.username,
+                'message': m.content,
+                'avatar_url': get_avatar_url_for_user(m.sender),
+                'created_at': m.created_at.isoformat(),
+            }
+            for m in group_messages
+        ],
     })
 
 @login_required
