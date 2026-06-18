@@ -123,7 +123,7 @@ STATIC_URL = 'static/'
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-DEFAULT_AVATAR_URL = f'/{MEDIA_URL}image.png'
+DEFAULT_AVATAR_URL = f'/{STATIC_URL}messenger/default_avatar.png'
 
 
 ASGI_APPLICATION = 'config.asgi.application'
