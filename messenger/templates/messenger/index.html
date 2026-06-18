@@ -1,126 +1,172 @@
 <!doctype html>
-<html>
+{% load static %}
+<html lang="ja">
   <head>
     <meta charset="utf-8" />
+    <link rel="stylesheet" href="{% static 'messenger/index.css' %}" />
     <title>Messenger</title>
   </head>
   <body>
-    <div id="header">
-      <h1>Messenger</h1>
-      <p>
-        <a href="{% url 'home' %}">← ホーム</a>
-        |
-        <a href="{% url 'profile' %}">マイプロフィール</a>
-      </p>
+    <div class="index-page">
+      <header class="index-header">
+        <h1>Messenger</h1>
+        <p class="index-nav">
+          <a href="{% url 'home' %}">← ホーム</a>
+          <span class="index-nav-sep">|</span>
+          <a href="{% url 'profile' %}">マイプロフィール</a>
+        </p>
+      </header>
+
+      <section class="index-section">
+        <h2>グループ一覧</h2>
+        {% if group_room_items %}
+        <ul class="room-list">
+          {% for item in group_room_items %}
+          <li class="room-item">
+            <a
+              href="{% url 'private_group_room' item.room.pk %}"
+              class="room-link"
+            >
+              <img
+                src="{{ item.icon_url }}"
+                alt="{{ item.room.name }} のアイコン"
+                class="room-icon"
+                width="40"
+                height="40"
+              />
+              <span class="room-name">{{ item.room.name }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="index-empty">グループはまだありません。</p>
+        {% endif %}
+        <a href="{% url 'create_group' %}" class="index-create-link"
+          >＋ グループを作成</a
+        >
+      </section>
+
+      <section class="index-section">
+        <h2>1対1チャット</h2>
+        {% if private_room_items %}
+        <ul class="room-list">
+          {% for item in private_room_items %}
+          <li class="room-item">
+            <a
+              href="{% url 'private_room' item.other_user.username %}"
+              class="room-link"
+            >
+              <img
+                src="{{ item.avatar_url }}"
+                alt="{{ item.other_user.username }} のアイコン"
+                class="room-icon"
+                width="40"
+                height="40"
+              />
+              <span class="room-name">{{ item.other_user.username }}</span>
+            </a>
+            <a
+              href="{% url 'profile_user' item.other_user.username %}"
+              class="room-profile-link"
+              >プロフィール</a
+            >
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="index-empty">ルームはまだありません。</p>
+        {% endif %}
+      </section>
+
+      <section class="index-section">
+        <h2>新規チャット</h2>
+        <div class="index-search">
+          <p class="index-search-desc">
+            ユーザー名を入力して検索してください。
+          </p>
+          <form id="enter-room-form">
+            <input
+              type="search"
+              id="user-search-input"
+              placeholder="ユーザー名を入力"
+              autocomplete="off"
+              required
+            />
+            <ul id="user-search-results" hidden></ul>
+            <button type="submit">入室</button>
+          </form>
+        </div>
+      </section>
     </div>
-    <div id="sidebar">
-      <h2>グループ一覧</h2>
-      {% for room in group_rooms %}
-      <p>
-        <a href="{% url 'private_group_room' room.pk %}">{{ room.name }}</a>
-      </p>
-      {% empty %}
-      <p>グループはまだありません。</p>
-      {% endfor %}
-      <p><a href="{% url 'create_group' %}">＋ グループを作成</a></p>
-      <h2>1対1チャット</h2>
-      {% for room in private_message_rooms %}
-      <p>
-        <a
-          href="{% if user == room.member_1 %}{% url 'private_room' room.member_2.username %}{% else %}{% url 'private_room' room.member_1.username %}{% endif %}"
-        >
-          {% if user == room.member_1 %}{{ room.member_2.username }}{% else %}{{
-          room.member_1.username }}{% endif %}</a
-        >
-        (<a
-          href="{% if user == room.member_1 %}{% url 'profile_user' room.member_2.username %}{% else %}{% url 'profile_user' room.member_1.username %}{% endif %}"
-          >プロフィール</a
-        >)
-      </p>
-      {% empty %}
-      <p>ルームはまだありません。</p>
-      {% endfor %}
-      <h2>新規チャット（相手を検索して入室）</h2>
-      <form id="enter-room-form">
-        <p>ユーザー名を入力して検索してください。</p>
-        <input
-          type="search"
-          id="user-search-input"
-          placeholder="ユーザー名を入力"
-          autocomplete="off"
-          required
-        />
-        <ul id="user-search-results" hidden></ul>
-        <button type="submit">入室</button>
-      </form>
-      {{ other_usernames|json_script:"other-usernames" }}
-      <script>
-        (function () {
-          var usernames = JSON.parse(
-            document.getElementById("other-usernames").textContent,
+
+    {{ other_usernames|json_script:"other-usernames" }}
+    <script>
+      (function () {
+        var usernames = JSON.parse(
+          document.getElementById("other-usernames").textContent,
+        );
+        var input = document.getElementById("user-search-input");
+        var results = document.getElementById("user-search-results");
+        var form = document.getElementById("enter-room-form");
+        var roomUrl = "{% url 'private_room' '___' %}";
+
+        function goToRoom(username) {
+          location.href = roomUrl.replace(
+            "___",
+            encodeURIComponent(username),
           );
-          var input = document.getElementById("user-search-input");
-          var results = document.getElementById("user-search-results");
-          var form = document.getElementById("enter-room-form");
-          var roomUrl = "{% url 'private_room' '___' %}";
+        }
 
-          function goToRoom(username) {
-            location.href = roomUrl.replace(
-              "___",
-              encodeURIComponent(username),
-            );
-          }
-
-          function filterUsers(query) {
-            var q = query.trim().toLowerCase();
-            if (!q) return [];
-            return usernames.filter(function (u) {
-              return u.toLowerCase().includes(q);
-            });
-          }
-
-          function renderResults(matches) {
-            results.innerHTML = "";
-            if (!matches.length) {
-              results.hidden = true;
-              return;
-            }
-            matches.forEach(function (username) {
-              var li = document.createElement("li");
-              var btn = document.createElement("button");
-              btn.type = "button";
-              btn.textContent = username;
-              btn.addEventListener("click", function () {
-                goToRoom(username);
-              });
-              li.appendChild(btn);
-              results.appendChild(li);
-            });
-            results.hidden = false;
-          }
-
-          input.addEventListener("input", function () {
-            renderResults(filterUsers(input.value));
+        function filterUsers(query) {
+          var q = query.trim().toLowerCase();
+          if (!q) return [];
+          return usernames.filter(function (u) {
+            return u.toLowerCase().includes(q);
           });
+        }
 
-          form.addEventListener("submit", function (e) {
-            e.preventDefault();
-            var query = input.value.trim();
-            if (!query) return;
-            var exact = usernames.find(function (u) {
-              return u.toLowerCase() === query.toLowerCase();
+        function renderResults(matches) {
+          results.innerHTML = "";
+          if (!matches.length) {
+            results.hidden = true;
+            return;
+          }
+          matches.forEach(function (username) {
+            var li = document.createElement("li");
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = username;
+            btn.addEventListener("click", function () {
+              goToRoom(username);
             });
-            if (exact) {
-              goToRoom(exact);
-              return;
-            }
-            var matches = filterUsers(query);
-            if (matches.length === 1) {
-              goToRoom(matches[0]);
-            }
+            li.appendChild(btn);
+            results.appendChild(li);
           });
-        })();
-      </script>
-    </div>
+          results.hidden = false;
+        }
+
+        input.addEventListener("input", function () {
+          renderResults(filterUsers(input.value));
+        });
+
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var query = input.value.trim();
+          if (!query) return;
+          var exact = usernames.find(function (u) {
+            return u.toLowerCase() === query.toLowerCase();
+          });
+          if (exact) {
+            goToRoom(exact);
+            return;
+          }
+          var matches = filterUsers(query);
+          if (matches.length === 1) {
+            goToRoom(matches[0]);
+          }
+        });
+      })();
+    </script>
   </body>
 </html>

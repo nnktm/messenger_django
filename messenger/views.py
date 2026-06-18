@@ -16,16 +16,30 @@ from .forms import ProfileEditForm, GroupCreateForm
 def index(request):
     private_rooms = PrivateRoom.objects.filter(
         Q(member_1=request.user) | Q(member_2=request.user)
-    ).order_by('-created_at')
+    ).select_related('member_1', 'member_2').order_by('-created_at')
     group_rooms = request.user.group_rooms.order_by('-created_at')
     other_usernames = list(
         User.objects.exclude(pk=request.user.pk)
         .order_by('username')
         .values_list('username', flat=True)
     )
+    private_room_items = []
+    for room in private_rooms:
+        other_user = room.member_2 if room.member_1_id == request.user.pk else room.member_1
+        private_room_items.append({
+            'other_user': other_user,
+            'avatar_url': get_avatar_url_for_user(other_user),
+        })
+    group_room_items = [
+        {
+            'room': room,
+            'icon_url': get_group_icon_url_for_room(room),
+        }
+        for room in group_rooms
+    ]
     return render(request, 'messenger/index.html', {
-        'private_message_rooms': private_rooms,
-        'group_rooms': group_rooms,
+        'private_room_items': private_room_items,
+        'group_room_items': group_room_items,
         'other_usernames': other_usernames,
     })
 
