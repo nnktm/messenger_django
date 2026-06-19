@@ -18,6 +18,33 @@
       </header>
 
       <section class="index-section">
+        <h2>AIチャット</h2>
+        {% if ai_room_items %}
+        <ul class="room-list">
+          {% for item in ai_room_items %}
+          <li class="room-item">
+            <a href="{% url 'ai_room' item.room.pk %}" class="room-link">
+              <img
+                src="{{ item.icon_url }}"
+                alt="{{ item.room.name }} のアイコン"
+                class="room-icon"
+                width="40"
+                height="40"
+              />
+              <span class="room-name">{{ item.room.name }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="index-empty">AIキャラクターはまだありません。</p>
+        {% endif %}
+        <a href="{% url 'create_ai_room' %}" class="index-create-link"
+          >＋ AIキャラクターを作成</a
+        >
+      </section>
+
+      <section class="index-section">
         <h2>グループ一覧</h2>
         {% if group_room_items %}
         <ul class="room-list">

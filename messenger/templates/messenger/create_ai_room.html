@@ -1,0 +1,45 @@
+<!doctype html>
+{% load static %}
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="{% static 'messenger/index.css' %}" />
+    <title>AIキャラクターを作成</title>
+  </head>
+  <body>
+    <div class="index-page">
+      <p><a href="{% url 'index' %}">← ルーム一覧</a></p>
+      <h1>AIキャラクターを作成</h1>
+      <p class="index-search-desc">
+        名前・性別・年齢・詳細設定を入力して、あなた専用のAIチャット相手を作れます。
+      </p>
+
+      {% if form.non_field_errors %}
+      <ul>
+        {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      <form
+        method="post"
+        enctype="multipart/form-data"
+        class="index-search"
+        style="margin-top: 16px"
+      >
+        {% csrf_token %}
+        {% for field in form %}
+        <p>
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label><br />
+          {{ field }}
+          {% for error in field.errors %}
+          <span>{{ error }}</span>
+          {% endfor %}
+        </p>
+        {% endfor %}
+        <button type="submit">作成してチャットを始める</button>
+      </form>
+    </div>
+  </body>
+</html>

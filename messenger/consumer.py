@@ -145,3 +145,106 @@ class GroupChatConsumer(AsyncWebsocketConsumer):
         return private_group_message.objects.create(
             room=room, sender=self.scope['user'], content=content
         )
+
+
+class AIChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.room_id = self.scope['url_route']['kwargs']['room_id']
+        user = self.scope.get('user')
+        if not user or not user.is_authenticated:
+            await self.close()
+            return
+        if not await self.user_owns_room(user):
+            await self.close()
+            return
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        pass
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        content = (data.get('message') or '').strip()
+        if not content:
+            return
+        user = self.scope.get('user')
+        if not user or not user.is_authenticated:
+            return
+
+        room = await self.get_room()
+        if not room:
+            return
+
+        user_avatar_url = await self.get_avatar_url(user)
+        ai_icon_url = await self.get_ai_icon_url(room)
+        user_msg = await self.save_message('user', content)
+        await self.send(text_data=json.dumps({
+            'message': content,
+            'username': user.username,
+            'avatar_url': user_avatar_url,
+            'created_at': user_msg.created_at.isoformat() if user_msg else None,
+            'is_ai': False,
+        }))
+
+        try:
+            ai_content = await self.generate_reply(content)
+        except Exception as exc:
+            ai_content = f'（エラー: {exc}）'
+
+        ai_msg = await self.save_message('assistant', ai_content)
+        await self.send(text_data=json.dumps({
+            'message': ai_content,
+            'username': room.name,
+            'avatar_url': ai_icon_url,
+            'created_at': ai_msg.created_at.isoformat() if ai_msg else None,
+            'is_ai': True,
+        }))
+
+    @database_sync_to_async
+    def user_owns_room(self, user):
+        from .models import ai_character_room
+        return ai_character_room.objects.filter(pk=self.room_id, owner=user).exists()
+
+    @database_sync_to_async
+    def get_room(self):
+        from .models import ai_character_room
+        try:
+            return ai_character_room.objects.get(pk=self.room_id)
+        except ai_character_room.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def get_avatar_url(self, user):
+        from .models import get_avatar_url_for_user
+        return get_avatar_url_for_user(user)
+
+    @database_sync_to_async
+    def get_ai_icon_url(self, room):
+        from .models import get_ai_icon_url_for_room
+        return get_ai_icon_url_for_room(room)
+
+    @database_sync_to_async
+    def save_message(self, role, content):
+        from .models import ai_character_room, ai_character_message
+        try:
+            room = ai_character_room.objects.get(pk=self.room_id)
+        except ai_character_room.DoesNotExist:
+            return None
+        return ai_character_message.objects.create(
+            room=room,
+            role=role,
+            content=content,
+        )
+
+    @database_sync_to_async
+    def generate_reply(self, user_message):
+        from .models import ai_character_room, ai_character_message
+        from .ai import generate_ai_reply
+
+        room = ai_character_room.objects.get(pk=self.room_id)
+        history = list(
+            ai_character_message.objects.filter(room=room).order_by('created_at')[:50]
+        )
+        if history and history[-1].role == ai_character_message.Role.USER:
+            history = history[:-1]
+        return generate_ai_reply(room, history, user_message)

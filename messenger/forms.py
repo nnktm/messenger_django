@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 
-from .models import Profile, private_group_room
+from .models import Profile, private_group_room, ai_character_room
 
 
 class ProfileEditForm(forms.ModelForm):
@@ -85,4 +85,33 @@ class GroupCreateForm(forms.Form):
             icon=self.cleaned_data.get('icon'),
         )
         room.members.add(self.creator, *self.invited_users)
+        return room
+
+
+class AICharacterCreateForm(forms.ModelForm):
+    class Meta:
+        model = ai_character_room
+        fields = ['name', 'gender', 'age', 'personality', 'icon']
+        labels = {
+            'name': '名前',
+            'gender': '性別',
+            'age': '年齢',
+            'personality': '詳細設定',
+            'icon': 'アイコン画像',
+        }
+        widgets = {
+            'personality': forms.Textarea(attrs={'rows': 6, 'placeholder': '性格、口調、背景設定など'}),
+            'age': forms.NumberInput(attrs={'min': 1, 'max': 120}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.owner = kwargs.pop('owner')
+        super().__init__(*args, **kwargs)
+        self.fields['icon'].required = False
+
+    def save(self, commit=True):
+        room = super().save(commit=False)
+        room.owner = self.owner
+        if commit:
+            room.save()
         return room

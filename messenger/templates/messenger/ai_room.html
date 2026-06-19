@@ -1,0 +1,127 @@
+<!doctype html>
+{% load static %}
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="{% static 'messenger/private_group_room.css' %}" />
+    <title>{{ ai_room.name }} とのチャット</title>
+  </head>
+  <body>
+    <div class="chat-page">
+      <header class="chat-top">
+        <p class="chat-back"><a href="{% url 'index' %}">← ルーム一覧</a></p>
+        <div class="chat-header">
+          <img
+            src="{{ ai_icon_url }}"
+            alt="{{ ai_room.name }} のアイコン"
+            class="chat-avatar chat-avatar-lg"
+          />
+          <div class="chat-header-text">
+            <h1>{{ ai_room.name }}</h1>
+            <p class="chat-members">
+              <span class="chat-members-label">AIキャラクター</span>
+              {{ ai_room.get_gender_display }} / {{ ai_room.age }}歳
+            </p>
+          </div>
+        </div>
+      </header>
+      <main id="chat-log" class="chat-log"></main>
+      <footer class="chat-bottom">
+        <div class="chat-input-wrap">
+          <input
+            id="chat-message-input"
+            type="text"
+            placeholder="メッセージを入力"
+          />
+          <input id="chat-message-submit" type="button" value="送信" />
+        </div>
+      </footer>
+    </div>
+    {{ ai_room.id|json_script:"room-id" }}
+    {{ initial_messages|json_script:"initial-messages" }}
+    <script>
+      const roomId = JSON.parse(document.getElementById("room-id").textContent);
+      const initialMessages = JSON.parse(
+        document.getElementById("initial-messages").textContent,
+      );
+      const chatLog = document.querySelector("#chat-log");
+      const submitBtn = document.querySelector("#chat-message-submit");
+      const messageInput = document.querySelector("#chat-message-input");
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text ?? "";
+        return div.innerHTML;
+      }
+
+      function formatTime(isoString) {
+        if (!isoString) return "";
+        const date = new Date(isoString);
+        return date.toLocaleTimeString("ja-JP", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      }
+
+      function appendMessage({ username, message, avatar_url, created_at, is_ai }) {
+        const row = document.createElement("div");
+        row.className = "chat-message" + (is_ai ? " chat-message-ai" : "");
+        row.innerHTML =
+          '<img src="' +
+          escapeHtml(avatar_url) +
+          '" alt="" class="chat-avatar" width="25" height="25" />' +
+          '<div class="chat-message-body">' +
+          '<div class="chat-message-header">' +
+          '<span class="chat-username">' +
+          escapeHtml(username) +
+          "</span>" +
+          '<span class="chat-timestamp">' +
+          escapeHtml(formatTime(created_at)) +
+          "</span>" +
+          "</div>" +
+          '<div class="chat-text">' +
+          escapeHtml(message) +
+          "</div>" +
+          "</div>";
+        chatLog.appendChild(row);
+        chatLog.scrollTop = chatLog.scrollHeight;
+      }
+
+      initialMessages.forEach(appendMessage);
+      chatLog.scrollTop = chatLog.scrollHeight;
+
+      const chatSocket = new WebSocket(
+        "ws://" + window.location.host + "/ws/chat/ai/" + roomId + "/",
+      );
+
+      chatSocket.onmessage = function (e) {
+        const data = JSON.parse(e.data);
+        appendMessage(data);
+        submitBtn.disabled = false;
+        messageInput.disabled = false;
+        messageInput.focus();
+      };
+
+      chatSocket.onclose = function () {
+        console.error("Chat socket closed unexpectedly");
+        submitBtn.disabled = false;
+        messageInput.disabled = false;
+      };
+
+      function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message || chatSocket.readyState !== WebSocket.OPEN) return;
+        chatSocket.send(JSON.stringify({ message: message }));
+        messageInput.value = "";
+        submitBtn.disabled = true;
+        messageInput.disabled = true;
+      }
+
+      messageInput.focus();
+      messageInput.addEventListener("keyup", function (e) {
+        if (e.keyCode === 13) sendMessage();
+      });
+      submitBtn.addEventListener("click", sendMessage);
+    </script>
+  </body>
+</html>

@@ -6,11 +6,14 @@ from django.contrib import messages
 from .models import (
     private_room as PrivateRoom,
     private_group_room as PrivateGroupRoom,
+    ai_character_room as AICharacterRoom,
+    ai_character_message as AICharacterMessage,
     Profile,
     get_avatar_url_for_user,
     get_group_icon_url_for_room,
+    get_ai_icon_url_for_room,
 )
-from .forms import ProfileEditForm, GroupCreateForm
+from .forms import ProfileEditForm, GroupCreateForm, AICharacterCreateForm
 
 @login_required
 def index(request):
@@ -37,9 +40,17 @@ def index(request):
         }
         for room in group_rooms
     ]
+    ai_room_items = [
+        {
+            'room': room,
+            'icon_url': get_ai_icon_url_for_room(room),
+        }
+        for room in request.user.ai_rooms.order_by('-created_at')
+    ]
     return render(request, 'messenger/index.html', {
         'private_room_items': private_room_items,
         'group_room_items': group_room_items,
+        'ai_room_items': ai_room_items,
         'other_usernames': other_usernames,
     })
 
@@ -62,6 +73,40 @@ def create_group(request):
     return render(request, 'messenger/create_group.html', {
         'form': form,
         'other_usernames': other_usernames,
+    })
+
+@login_required
+def create_ai_room(request):
+    if request.method == 'POST':
+        form = AICharacterCreateForm(request.POST, request.FILES, owner=request.user)
+        if form.is_valid():
+            room = form.save()
+            messages.success(request, f'AIキャラクター「{room.name}」を作成しました。')
+            return redirect('ai_room', room_id=room.pk)
+    else:
+        form = AICharacterCreateForm(owner=request.user)
+
+    return render(request, 'messenger/create_ai_room.html', {'form': form})
+
+@login_required
+def ai_room(request, room_id):
+    ai_room_obj = get_object_or_404(AICharacterRoom, pk=room_id, owner=request.user)
+    ai_messages = ai_room_obj.messages.order_by('created_at')[:200]
+    user_avatar_url = get_avatar_url_for_user(request.user)
+    ai_icon_url = get_ai_icon_url_for_room(ai_room_obj)
+    return render(request, 'messenger/ai_room.html', {
+        'ai_room': ai_room_obj,
+        'ai_icon_url': ai_icon_url,
+        'initial_messages': [
+            {
+                'message': m.content,
+                'username': ai_room_obj.name if m.role == AICharacterMessage.Role.ASSISTANT else request.user.username,
+                'avatar_url': ai_icon_url if m.role == AICharacterMessage.Role.ASSISTANT else user_avatar_url,
+                'created_at': m.created_at.isoformat(),
+                'is_ai': m.role == AICharacterMessage.Role.ASSISTANT,
+            }
+            for m in ai_messages
+        ],
     })
 
 @login_required
