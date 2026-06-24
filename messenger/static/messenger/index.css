@@ -264,3 +264,75 @@ body {
 #enter-room-form button[type="submit"]:hover {
   background: var(--accent-hover);
 }
+
+#enter-open-room-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#open-room-search-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+#open-room-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+#open-room-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+}
+
+#open-room-search-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#open-room-search-results button {
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.95rem;
+  color: var(--text);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#open-room-search-results button:hover {
+  background: #2f3847;
+}
+
+#enter-open-room-form button[type="submit"] {
+  align-self: flex-start;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#enter-open-room-form button[type="submit"]:hover {
+  background: var(--accent-hover);
+}

@@ -9,5 +9,7 @@ urlpatterns = [
     path('group/<int:room_id>/', views.private_group_room, name='private_group_room'),
     path('ai/create/', views.create_ai_room, name='create_ai_room'),
     path('ai/<int:room_id>/', views.ai_room, name='ai_room'),
+    path('open/create/', views.create_open_room, name='create_open_room'),
+    path('open/<int:room_id>/', views.open_room, name='open_room'),
     path('<str:room_slug>/', views.private_room, name='private_room'),
 ]

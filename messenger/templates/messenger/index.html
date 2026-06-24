@@ -18,6 +18,49 @@
       </header>
 
       <section class="index-section">
+        <h2>参加した公開ルーム</h2>
+        {% if open_room_items %}
+        <ul class="room-list">
+          {% for item in open_room_items %}
+          <li class="room-item">
+            <a
+              href="{% url 'open_room' item.room.pk %}"
+              class="room-link"
+            >
+              <span class="room-name">{{ item.room.name }}</span>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="index-empty">参加した公開ルームはまだありません。検索からルームを探してください。</p>
+        {% endif %}
+        <a href="{% url 'create_open_room' %}" class="index-create-link"
+          >＋ 公開ルームを作成</a
+        >
+      </section>
+
+      <section class="index-section">
+        <h2>公開ルームを検索</h2>
+        <div class="index-search">
+          <p class="index-search-desc">
+            ルーム名を入力して検索し、参加してください。
+          </p>
+          <form id="enter-open-room-form">
+            <input
+              type="search"
+              id="open-room-search-input"
+              placeholder="ルーム名を入力"
+              autocomplete="off"
+              required
+            />
+            <ul id="open-room-search-results" hidden></ul>
+            <button type="submit">参加</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="index-section">
         <h2>AIチャット</h2>
         {% if ai_room_items %}
         <ul class="room-list">
@@ -128,6 +171,7 @@
     </div>
 
     {{ other_usernames|json_script:"other-usernames" }}
+    {{ open_room_search|json_script:"open-room-search" }}
     <script>
       (function () {
         var usernames = JSON.parse(
@@ -191,6 +235,69 @@
           var matches = filterUsers(query);
           if (matches.length === 1) {
             goToRoom(matches[0]);
+          }
+        });
+      })();
+
+      (function () {
+        var rooms = JSON.parse(
+          document.getElementById("open-room-search").textContent,
+        );
+        var input = document.getElementById("open-room-search-input");
+        var results = document.getElementById("open-room-search-results");
+        var form = document.getElementById("enter-open-room-form");
+        var roomUrl = "{% url 'open_room' 0 %}";
+
+        function goToOpenRoom(roomId) {
+          location.href = roomUrl.replace("/0/", "/" + roomId + "/");
+        }
+
+        function filterRooms(query) {
+          var q = query.trim().toLowerCase();
+          if (!q) return [];
+          return rooms.filter(function (r) {
+            return r.name.toLowerCase().includes(q);
+          });
+        }
+
+        function renderResults(matches) {
+          results.innerHTML = "";
+          if (!matches.length) {
+            results.hidden = true;
+            return;
+          }
+          matches.forEach(function (room) {
+            var li = document.createElement("li");
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = room.name;
+            btn.addEventListener("click", function () {
+              goToOpenRoom(room.id);
+            });
+            li.appendChild(btn);
+            results.appendChild(li);
+          });
+          results.hidden = false;
+        }
+
+        input.addEventListener("input", function () {
+          renderResults(filterRooms(input.value));
+        });
+
+        form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var query = input.value.trim();
+          if (!query) return;
+          var exact = rooms.find(function (r) {
+            return r.name.toLowerCase() === query.toLowerCase();
+          });
+          if (exact) {
+            goToOpenRoom(exact.id);
+            return;
+          }
+          var matches = filterRooms(query);
+          if (matches.length === 1) {
+            goToOpenRoom(matches[0].id);
           }
         });
       })();

@@ -8,12 +8,19 @@ from .models import (
     private_group_room as PrivateGroupRoom,
     ai_character_room as AICharacterRoom,
     ai_character_message as AICharacterMessage,
+    open_room as OpenRoom,
+    open_room_visit as OpenRoomVisit,
     Profile,
     get_avatar_url_for_user,
     get_group_icon_url_for_room,
     get_ai_icon_url_for_room,
 )
-from .forms import ProfileEditForm, GroupCreateForm, AICharacterCreateForm
+from .forms import ProfileEditForm, GroupCreateForm, AICharacterCreateForm, OpenRoomCreateForm
+
+
+def record_open_room_visit(user, room):
+    OpenRoomVisit.objects.update_or_create(user=user, room=room)
+
 
 @login_required
 def index(request):
@@ -47,12 +54,58 @@ def index(request):
         }
         for room in request.user.ai_rooms.order_by('-created_at')
     ]
+    visited_open_rooms = (
+        OpenRoomVisit.objects.filter(user=request.user)
+        .select_related('room')
+        .order_by('-visited_at')
+    )
+    open_room_items = [{'room': visit.room} for visit in visited_open_rooms]
+    open_room_search = [
+        {'id': room.pk, 'name': room.name}
+        for room in OpenRoom.objects.order_by('-created_at')
+    ]
     return render(request, 'messenger/index.html', {
         'private_room_items': private_room_items,
         'group_room_items': group_room_items,
         'ai_room_items': ai_room_items,
+        'open_room_items': open_room_items,
+        'open_room_search': open_room_search,
         'other_usernames': other_usernames,
     })
+
+@login_required
+def create_open_room(request):
+    if request.method == 'POST':
+        form = OpenRoomCreateForm(request.POST)
+        if form.is_valid():
+            room = form.save()
+            record_open_room_visit(request.user, room)
+            messages.success(request, f'公開ルーム「{room.name}」を作成しました。')
+            return redirect('open_room', room_id=room.pk)
+    else:
+        form = OpenRoomCreateForm()
+
+    return render(request, 'messenger/create_open_room.html', {'form': form})
+
+
+@login_required
+def open_room(request, room_id):
+    open_room_obj = get_object_or_404(OpenRoom, pk=room_id)
+    record_open_room_visit(request.user, open_room_obj)
+    open_messages = open_room_obj.messages.select_related('sender').order_by('created_at')[:200]
+    return render(request, 'messenger/open_room.html', {
+        'open_room': open_room_obj,
+        'initial_messages': [
+            {
+                'username': m.sender.username,
+                'message': m.content,
+                'avatar_url': get_avatar_url_for_user(m.sender),
+                'created_at': m.created_at.isoformat(),
+            }
+            for m in open_messages
+        ],
+    })
+
 
 @login_required
 def create_group(request):

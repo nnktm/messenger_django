@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.models import User
 
-from .models import Profile, private_group_room, ai_character_room
+from .models import Profile, private_group_room, ai_character_room, open_room
 
 
 class ProfileEditForm(forms.ModelForm):
@@ -115,3 +115,22 @@ class AICharacterCreateForm(forms.ModelForm):
         if commit:
             room.save()
         return room
+
+
+class OpenRoomCreateForm(forms.ModelForm):
+    class Meta:
+        model = open_room
+        fields = ['name', 'description']
+        labels = {
+            'name': 'ルーム名',
+            'description': '説明（任意）',
+        }
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'ルームの説明（任意）'}),
+        }
+
+    def clean_name(self):
+        name = self.cleaned_data['name'].strip()
+        if not name:
+            raise forms.ValidationError('ルーム名を入力してください。')
+        return name

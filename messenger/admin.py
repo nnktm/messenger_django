@@ -3,6 +3,7 @@ from .models import (
     private_room, private_message, Profile,
     private_group_room, private_group_message,
     ai_character_room, ai_character_message,
+    open_room, open_room_message, open_room_visit,
 )
 
 admin.site.register(private_room)
@@ -12,3 +13,6 @@ admin.site.register(private_group_room)
 admin.site.register(private_group_message)
 admin.site.register(ai_character_room)
 admin.site.register(ai_character_message)
+admin.site.register(open_room)
+admin.site.register(open_room_message)
+admin.site.register(open_room_visit)
